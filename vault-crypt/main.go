@@ -132,6 +132,12 @@ func (c *conterWriter) Write(p []byte) (n int, err error) {
 }
 
 func realMain(args []string) error {
+	var (
+		outputFileMode os.FileMode = 0644
+		output         *os.File
+		input          *os.File
+	)
+
 	secret, err := GetKey(*flagKeyLocation)
 	if err != nil {
 		return err
@@ -140,40 +146,50 @@ func realMain(args []string) error {
 	inputFilename := args[0]
 	outputFilename := args[1]
 
-	// Stat file for reading Mode
-	fileInfo, err := os.Stat(inputFilename)
-	if err != nil {
-		return err
+	if inputFilename == "-" {
+		// Reading from Stdin
+		input = os.Stdin
+	} else {
+		// Stat file for reading Mode
+		fileInfo, err := os.Stat(inputFilename)
+		if err != nil {
+			return err
+		}
+		outputFileMode = fileInfo.Mode()
+		// Open file for reading
+		f, err := os.Open(inputFilename)
+		if err != nil {
+			return err
+		}
+		input = f
 	}
 
-	// Open file for reading
-	in, err := os.Open(inputFilename)
-	if err != nil {
-		return err
+	if outputFilename == "-" {
+		// Reading from Stdout
+		output = os.Stdout
+	} else {
+		// Open file for writing
+		f, err := os.OpenFile(outputFilename, os.O_CREATE|os.O_WRONLY, outputFileMode)
+		if err != nil {
+			return err
+		}
+		output = f
+		spinner.Start()
+		defer spinner.Stop()
 	}
-
-	// Open file for writing
-	out, err := os.OpenFile(outputFilename, os.O_CREATE|os.O_WRONLY, fileInfo.Mode())
-	if err != nil {
-		return err
-	}
-
-	spinner.Start()
-	defer spinner.Stop()
 
 	if *flagDecrypt {
-		_, err := Decrypt(in, out, secret)
+		_, err := Decrypt(input, output, secret)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 
-	_, err = Encrypt(in, out, secret)
+	_, err = Encrypt(input, output, secret)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
