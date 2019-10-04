@@ -8,7 +8,10 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"time"
 
+	spin "github.com/briandowns/spinner"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/hashicorp/vault/api"
 	"github.com/odeke-em/drive/src/dcrypto"
 )
@@ -16,6 +19,7 @@ import (
 var (
 	flagDecrypt     = flag.Bool("d", false, "Decrypt input file")
 	flagKeyLocation = flag.String("k", "", "Key for encoding or decoding input file (base64key://encoded-key, hashivault://transit-key-id?version=latest)")
+	spinner         = spin.New(spin.CharSets[11], 100*time.Millisecond)
 )
 
 // GetBase64key returns decoded key
@@ -89,30 +93,42 @@ func GetKey(location string) ([]byte, error) {
 	return nil, errors.New("Unsupported key scheme")
 }
 
+type conterWriter struct {
+	t int
+	w io.Writer
+}
+
 // Encrypt bytes via secret from reader to writer
-func Encrypt(in io.Reader, out io.Writer, secret []byte) error {
+func Encrypt(in io.Reader, out io.Writer, secret []byte) (int64, error) {
 	encrypter, err := dcrypto.NewEncrypter(in, secret)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	_, err = io.Copy(out, encrypter)
+	n, err := io.Copy(&conterWriter{w: out}, encrypter)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+	return n, nil
 }
 
 // Decrypt bytes via secret from reader to writer
-func Decrypt(in io.Reader, out io.Writer, secret []byte) error {
+func Decrypt(in io.Reader, out io.Writer, secret []byte) (int64, error) {
 	decrypter, err := dcrypto.NewDecrypter(in, secret)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	_, err = io.Copy(out, decrypter)
+	n, err := io.Copy(&conterWriter{w: out}, decrypter)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+	return n, nil
+}
+
+func (c *conterWriter) Write(p []byte) (n int, err error) {
+	n, err = c.w.Write(p)
+	c.t += n
+	spinner.Suffix = fmt.Sprintf(" Writing %s...", humanize.Bytes(uint64(c.t)))
+	return
 }
 
 func realMain(args []string) error {
@@ -143,13 +159,19 @@ func realMain(args []string) error {
 	}
 
 	if *flagDecrypt {
-		if err := Decrypt(in, out, secret); err != nil {
+		spinner.Start()
+		_, err := Decrypt(in, out, secret)
+		spinner.Stop()
+		if err != nil {
 			return err
 		}
 		return nil
 	}
 
-	if err := Encrypt(in, out, secret); err != nil {
+	spinner.Start()
+	_, err = Encrypt(in, out, secret)
+	spinner.Stop()
+	if err != nil {
 		return err
 	}
 
