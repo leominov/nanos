@@ -161,7 +161,7 @@ func main() {
 
 	args := flag.Args()
 	if len(args) != 2 {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vault-crypt [flags] ./input-file ./output-file")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vault-crypt [options...] ./input-file ./output-file")
 		fmt.Fprintln(flag.CommandLine.Output(), "Options:")
 		flag.PrintDefaults()
 		return
