@@ -158,19 +158,18 @@ func realMain(args []string) error {
 		return err
 	}
 
+	spinner.Start()
+	defer spinner.Stop()
+
 	if *flagDecrypt {
-		spinner.Start()
 		_, err := Decrypt(in, out, secret)
-		spinner.Stop()
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 
-	spinner.Start()
 	_, err = Encrypt(in, out, secret)
-	spinner.Stop()
 	if err != nil {
 		return err
 	}
