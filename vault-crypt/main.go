@@ -131,13 +131,33 @@ func (c *conterWriter) Write(p []byte) (n int, err error) {
 	return
 }
 
-func realMain(args []string) error {
-	var (
-		outputFileMode os.FileMode = 0644
-		output         *os.File
-		input          *os.File
-	)
+func reader(source string) (io.Reader, error) {
+	if source == "-" {
+		// Reading from Stdin
+		return os.Stdin, nil
+	}
+	// Open file for reading
+	f, err := os.Open(source)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
 
+func writer(source string) (io.Writer, error) {
+	if source == "-" {
+		// Writing to Stdout
+		return os.Stdout, nil
+	}
+	// Open file for writing
+	f, err := os.OpenFile(source, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func realMain(args []string) error {
 	secret, err := GetKey(*flagKeyLocation)
 	if err != nil {
 		return err
@@ -146,34 +166,18 @@ func realMain(args []string) error {
 	inputFilename := args[0]
 	outputFilename := args[1]
 
-	if inputFilename == "-" {
-		// Reading from Stdin
-		input = os.Stdin
-	} else {
-		// Stat file for reading Mode
-		fileInfo, err := os.Stat(inputFilename)
-		if err != nil {
-			return err
-		}
-		outputFileMode = fileInfo.Mode()
-		// Open file for reading
-		f, err := os.Open(inputFilename)
-		if err != nil {
-			return err
-		}
-		input = f
+	input, err := reader(inputFilename)
+	if err != nil {
+		return err
 	}
 
-	if outputFilename == "-" {
-		// Writing to Stdout
-		output = os.Stdout
-	} else {
-		// Open file for writing
-		f, err := os.OpenFile(outputFilename, os.O_CREATE|os.O_WRONLY, outputFileMode)
-		if err != nil {
-			return err
-		}
-		output = f
+	output, err := writer(outputFilename)
+	if err != nil {
+		return err
+	}
+
+	// Show spinner in case of non-stdout output
+	if outputFilename != "-" {
 		spinner.Start()
 		defer spinner.Stop()
 	}
