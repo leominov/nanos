@@ -165,7 +165,7 @@ func realMain(args []string) error {
 	}
 
 	if outputFilename == "-" {
-		// Reading from Stdout
+		// Writing to Stdout
 		output = os.Stdout
 	} else {
 		// Open file for writing
