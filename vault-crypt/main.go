@@ -90,7 +90,7 @@ func GetKey(location string) ([]byte, error) {
 	case "hashivault":
 		return GetHashiVault(s.Hostname(), s.Query().Get("version"))
 	}
-	return nil, errors.New("Unsupported key scheme")
+	return nil, fmt.Errorf("Unsupported key scheme: %s", s.Scheme)
 }
 
 type conterWriter struct {
