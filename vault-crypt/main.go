@@ -201,7 +201,7 @@ func main() {
 	flag.Parse()
 
 	args := flag.Args()
-	if len(args) != 2 {
+	if len(args) != 2 || len(*flagKeyLocation) == 0 {
 		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vault-crypt [options...] ./input-file ./output-file")
 		fmt.Fprintln(flag.CommandLine.Output(), "Options:")
 		flag.PrintDefaults()
