@@ -57,6 +57,11 @@ func main() {
 
 	if data, ok := secret.Data["data"]; ok && data != nil {
 		val := data.(map[string]interface{})[parts[1]]
-		fmt.Println(val)
+		if m, ok := secret.Data["metadata"]; ok {
+			if dataMap, ok := m.(map[string]interface{}); ok {
+				fmt.Printf("Version: %s\n", dataMap["version"])
+			}
+		}
+		fmt.Printf("Content: %s\n", val)
 	}
 }
