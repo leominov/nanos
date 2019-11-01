@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -10,6 +11,10 @@ import (
 
 const (
 	vaultPrefix = "vault:"
+)
+
+var (
+	outputFormat = flag.String("format", "text", "Output format (text or json)")
 )
 
 func main() {
@@ -55,13 +60,26 @@ func main() {
 		os.Exit(1)
 	}
 
+	format := strings.ToLower(*outputFormat)
 	if data, ok := secret.Data["data"]; ok && data != nil {
 		val := data.(map[string]interface{})[parts[1]]
+		var version interface{}
+		content := val.(string)
 		if m, ok := secret.Data["metadata"]; ok {
 			if dataMap, ok := m.(map[string]interface{}); ok {
-				fmt.Printf("Version: %s\n", dataMap["version"])
+				version = dataMap["version"]
 			}
 		}
-		fmt.Printf("Content: %s\n", val)
+		switch format {
+		case "json":
+			bytes, _ := json.MarshalIndent(map[string]interface{}{
+				"version": version,
+				"content": content,
+			}, "", "    ")
+			fmt.Println(string(bytes))
+		default:
+			fmt.Printf("Version: %s\n", version)
+			fmt.Printf("Content: %s\n", content)
+		}
 	}
 }
