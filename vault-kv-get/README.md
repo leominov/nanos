@@ -3,5 +3,5 @@
 ## Usage
 
 ```
-vault-kv-get vault:engine/data/path/secret#fiels#1
+vault-kv-get vault:engine/data/path/secret#field#1
 ```
