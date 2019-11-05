@@ -24,7 +24,7 @@ var (
 	optsInputDir = flag.String("dir", "./", "Directory to search vault:engine/data/path/secret#field#1 entries")
 	logLevel     = flag.String("log-level", "info", "Level of logging")
 
-	vaultSecretRE = regexp.MustCompile(`(vault:[\w\/\-\_\#]+)`)
+	vaultSecretRE = regexp.MustCompile(`(vault:[\w\/\-\.\_\#]+)`)
 )
 
 func FilePathWalkDir(root string) ([]string, error) {
