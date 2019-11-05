@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/leominov/nanos/pkg/vault"
 )
 
 const (
@@ -30,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	client, err := NewVaultClient(
+	client, err := vault.NewVaultClient(
 		os.Getenv("VAULT_ADDR"),
 		os.Getenv("VAULT_LOGIN"),
 		os.Getenv("VAULT_PASSWORD"),
@@ -49,7 +51,7 @@ func main() {
 		}
 	}
 
-	secret, err := kvReadRequest(client, parts[0], versionParam)
+	secret, err := vault.KVReadRequest(client, parts[0], versionParam)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

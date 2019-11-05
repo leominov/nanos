@@ -1,4 +1,4 @@
-package main
+package vault
 
 import (
 	"fmt"
@@ -29,7 +29,7 @@ func NewVaultClient(addr, user, pass, authMethod string, httpCli *http.Client) (
 	return client, nil
 }
 
-func kvReadRequest(client *api.Client, path string, params map[string]string) (*api.Secret, error) {
+func KVReadRequest(client *api.Client, path string, params map[string]string) (*api.Secret, error) {
 	r := client.NewRequest("GET", "/v1/"+path)
 	for k, v := range params {
 		r.Params.Set(k, v)
@@ -57,4 +57,19 @@ func kvReadRequest(client *api.Client, path string, params map[string]string) (*
 	}
 
 	return api.ParseSecret(resp.Body)
+}
+
+func GetSecretData(secret *api.Secret, field string) (version, content interface{}) {
+	data, ok := secret.Data["data"]
+	if !ok || data == nil {
+		return
+	}
+	val := data.(map[string]interface{})[field]
+	content = val
+	if m, ok := secret.Data["metadata"]; ok {
+		if dataMap, ok := m.(map[string]interface{}); ok {
+			version = dataMap["version"]
+		}
+	}
+	return
 }
