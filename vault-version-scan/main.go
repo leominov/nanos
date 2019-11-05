@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/vault/api"
 	"github.com/leominov/nanos/pkg/vault"
 	"github.com/sirupsen/logrus"
 )
@@ -63,37 +65,56 @@ func main() {
 	}
 
 	logrus.Infof("Files: %d", len(files))
+	failed := false
 	for _, file := range files {
-		b, err := ioutil.ReadFile(file)
-		if err != nil {
-			logrus.Error(err)
-			continue
-		}
-		matchGroups := vaultSecretRE.FindAllStringSubmatch(string(b), -1)
-		if len(matchGroups) == 0 {
-			continue
-		}
 		logrus.Infof("Scanning %s file...", file)
-		for _, matchGroup := range matchGroups {
-			if len(matchGroup) < 1 {
-				continue
-			}
-			raw := strings.TrimPrefix(matchGroup[1], vaultPrefix)
-			logrus.Debugf("Checking %s secret...", raw)
-			parts := strings.Split(raw, "#")
-			if len(parts) < 3 {
-				logrus.Errorf("%s: Version not specified", raw)
-				continue
-			}
-			secret, err := vault.KVReadRequest(client, parts[0], map[string]string{})
-			if err != nil {
-				logrus.Errorf("%s: %v", raw, err)
-				continue
-			}
-			version, _ := vault.GetSecretData(secret, parts[1])
-			if parts[2] != version.(json.Number).String() {
-				logrus.Errorf("%s: Latest version: %s", raw, version)
-			}
+		errs := checkFile(client, file)
+		if len(errs) > 0 {
+			failed = true
+			printsErrors(errs)
 		}
 	}
+	if failed {
+		logrus.Fatal("Failed")
+	}
+}
+
+func printsErrors(errs []error) {
+	for _, err := range errs {
+		logrus.Error(err)
+	}
+}
+
+func checkFile(client *api.Client, file string) []error {
+	errs := []error{}
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		return append(errs, err)
+	}
+	matchGroups := vaultSecretRE.FindAllStringSubmatch(string(b), -1)
+	if len(matchGroups) == 0 {
+		return nil
+	}
+	for _, matchGroup := range matchGroups {
+		if len(matchGroup) < 1 {
+			continue
+		}
+		raw := strings.TrimPrefix(matchGroup[1], vaultPrefix)
+		parts := strings.Split(raw, "#")
+		if len(parts) < 3 {
+			errs = append(errs, fmt.Errorf("%s: Version not specified", raw))
+			continue
+		}
+		secret, err := vault.KVReadRequest(client, parts[0], map[string]string{})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %v", raw, err))
+			continue
+		}
+		version, _ := vault.GetSecretData(secret, parts[1])
+		if parts[2] != version.(json.Number).String() {
+			errs = append(errs, fmt.Errorf("%s: Latest version: %s", raw, version))
+			continue
+		}
+	}
+	return errs
 }
