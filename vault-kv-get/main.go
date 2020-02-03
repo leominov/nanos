@@ -16,19 +16,21 @@ const (
 )
 
 var (
-	outputFormat = flag.String("format", "text", "Output format (text or json)")
+	outputFormat = flag.String("o", "text", "Output format (text or json)")
 )
 
 func main() {
 	flag.Parse()
 	raw := flag.Arg(0)
 	if !strings.HasPrefix(raw, vaultPrefix) {
+		fmt.Fprintf(os.Stderr, "Failed to find %q prefix\n", vaultPrefix)
 		os.Exit(1)
 	}
 
 	raw = strings.TrimPrefix(raw, vaultPrefix)
 	parts := strings.Split(raw, "#")
 	if len(parts) < 2 {
+		fmt.Fprintln(os.Stderr, "Field name must be specified")
 		os.Exit(1)
 	}
 
@@ -40,7 +42,7 @@ func main() {
 		http.DefaultClient,
 	)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
@@ -53,12 +55,12 @@ func main() {
 
 	secret, err := vault.KVReadRequest(client, parts[0], versionParam)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
 	if secret == nil {
-		fmt.Println(fmt.Sprintf("No value found at %s", parts[1]))
+		fmt.Fprintf(os.Stderr, "No value found at %s\n", parts[1])
 		os.Exit(1)
 	}
 
@@ -78,10 +80,11 @@ func main() {
 				"version": version,
 				"content": content,
 			}, "", "    ")
-			fmt.Println(string(bytes))
+			fmt.Fprint(os.Stdout, string(bytes))
 		default:
-			fmt.Printf("Version: %s\n", version)
-			fmt.Printf("Content: %s\n", content)
+			fmt.Fprint(os.Stdout, content)
 		}
+		return
 	}
+	fmt.Fprintln(os.Stderr, "Failed to find data")
 }
